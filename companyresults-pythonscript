@@ -1,0 +1,79 @@
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+from openai import OpenAI  # Import the OpenAI class
+
+# Set up OpenAI API key
+api_key = 'not my real secret api key'
+# Create an instance of the OpenAI class
+openai_client = OpenAI(api_key=api_key)
+
+# Read the Excel file
+excel_file = '/Users/serenatheobald/Downloads/companyresults.xlsx' 
+df = pd.read_excel(excel_file)
+
+keywords = ['sponsorship', 'international employees', 'H-1B visas', 'H1B']
+
+# Set headers to mimic a browser request
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'
+}
+
+def check_company_website(url):
+    try:
+        # Ensure the URL starts with 'http://' or 'https://'
+        if not url.startswith(('http://', 'https://')):
+            url = 'http://' + url
+
+        #response = requests.get(url)
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.content, 'html.parser')
+            text = soup.get_text().lower()  # convert to lower case for case-insensitive search
+            for keyword in keywords:
+                if keyword.lower() in text:
+                    print(f'Keyword "{keyword}" found in {url}')
+                    return True
+            # Check for links related to sponsorships, international employees, and H-1B visas
+            links = soup.find_all('a')
+            for link in links:
+                for keyword in keywords:
+                    if keyword.lower() in link.get('href', ''):
+                        print(f'Found a link related to "{keyword}" in {url}: {link.get("href")}')
+                        return True
+        else:
+            print(f'Failed to retrieve {url} with status code {response.status_code}')
+    except requests.exceptions.RequestException as e:
+        print(f'Error fetching {url}: {e}')
+    return False
+
+# iterate through the first 10 companies in the excel file
+for index, row in df.head(10).iterrows():
+    company_name = row['Company Name'] 
+    company_website = row['URL/Web Address']  
+
+    # fixing URLs starting with 'http://https://' to 'https://'
+    if company_website.startswith('http://https://'):
+        company_website = company_website.replace('http://https://', 'https://')
+
+    print(f'Checking {company_name} website: {company_website}')
+    if check_company_website(company_website):
+        print(f'{company_name} has relevant information.')
+    else:
+        print(f'No relevant information found for {company_name}.')
+
+    # Use OpenAI API to generate text related to the company (supplement to links/website info)
+#    prompt = f"Check information about {company_name}."
+#    response = openai_client.completions.create(
+#        model="gpt-3.5-turbo",
+#        prompt=prompt,
+#        max_tokens=100
+#    )
+#    generated_text = response['choices'][0]['text']
+#    # Search for keywords in the generated text
+##    for keyword in keywords:
+#        if keyword.lower() in generated_text.lower():
+#            print(f'Keyword "{keyword}" found in generated text for {company_name}.')
+#            break
+
+print('Done.')
