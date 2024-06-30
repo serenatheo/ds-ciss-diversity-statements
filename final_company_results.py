@@ -11,6 +11,7 @@ import httpx
 from urllib.parse import urlencode
 import time
 
+
 # Set up OpenAI API key
 api_key = 'not my real key'
 openai.api_key = api_key
